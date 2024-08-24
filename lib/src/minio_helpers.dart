@@ -105,12 +105,7 @@ String makeDateLong(DateTime date) {
   final isoDate = date.toIso8601String();
 
   // 'YYYYMMDDTHHmmss' + Z
-  return isoDate.substring(0, 4) +
-      isoDate.substring(5, 7) +
-      isoDate.substring(8, 13) +
-      isoDate.substring(14, 16) +
-      isoDate.substring(17, 19) +
-      'Z';
+  return '${isoDate.substring(0, 4)}${isoDate.substring(5, 7)}${isoDate.substring(8, 13)}${isoDate.substring(14, 16)}${isoDate.substring(17, 19)}Z';
 }
 
 String makeDateShort(DateTime date) {
@@ -128,7 +123,7 @@ Map<String, String> prependXAMZMeta(Map<String, String?> metadata) {
     if (!isAmzHeader(key) &&
         !isSupportedHeader(key) &&
         !isStorageclassHeader(key)) {
-      newMetadata['x-amz-meta-' + key] = newMetadata[key]!;
+      newMetadata['x-amz-meta-$key'] = newMetadata[key]!;
       newMetadata.remove(key);
     }
   }
@@ -144,7 +139,7 @@ bool isAmzHeader(key) {
 }
 
 bool isSupportedHeader(key) {
-  var supported_headers = {
+  var supportedHeaders = {
     'content-type',
     'cache-control',
     'content-encoding',
@@ -152,7 +147,7 @@ bool isSupportedHeader(key) {
     'content-language',
     'x-amz-website-redirect-location',
   };
-  return (supported_headers.contains(key.toLowerCase()));
+  return (supportedHeaders.contains(key.toLowerCase()));
 }
 
 bool isStorageclassHeader(key) {
@@ -215,7 +210,7 @@ Future<void> validateStreamed(
 
 void validate(MinioResponse response, {int? expect}) {
   if (response.statusCode >= 400) {
-    var error;
+    Error error;
 
     // Parse HTTP response body as XML only when not empty
     if (response.body.isEmpty) {
@@ -225,7 +220,7 @@ void validate(MinioResponse response, {int? expect}) {
       error = Error.fromXml(body.rootElement);
     }
 
-    throw MinioS3Error(error?.message, error, response);
+    throw MinioS3Error(error.message, error, response);
   }
 
   if (expect != null && response.statusCode != expect) {
@@ -234,12 +229,12 @@ void validate(MinioResponse response, {int? expect}) {
   }
 }
 
-final _a = 'a'.codeUnitAt(0);
-final _A = 'A'.codeUnitAt(0);
-final _z = 'z'.codeUnitAt(0);
-final _Z = 'Z'.codeUnitAt(0);
-final _0 = '0'.codeUnitAt(0);
-final _9 = '9'.codeUnitAt(0);
+final a = 'a'.codeUnitAt(0);
+final A = 'A'.codeUnitAt(0);
+final z = 'z'.codeUnitAt(0);
+final Z = 'Z'.codeUnitAt(0);
+final zero = '0'.codeUnitAt(0);
+final nine = '9'.codeUnitAt(0);
 
 final _pathIgnoredChars = {
   '%'.codeUnitAt(0),
@@ -254,9 +249,9 @@ final _pathIgnoredChars = {
 String encodePath(Uri uri) {
   final result = StringBuffer();
   for (var char in uri.path.codeUnits) {
-    if (_A <= char && char <= _Z ||
-        _a <= char && char <= _z ||
-        _0 <= char && char <= _9) {
+    if (A <= char && char <= Z ||
+        a <= char && char <= z ||
+        0 <= char && char <= 9) {
       result.writeCharCode(char);
       continue;
     }

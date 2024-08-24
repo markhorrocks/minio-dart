@@ -14,9 +14,6 @@ import 'package:minio/src/utils.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:xml/xml.dart' show XmlElement;
 
-import '../models.dart';
-import 'minio_helpers.dart';
-
 class Minio {
   /// Initializes a new client object.
   Minio({
@@ -133,37 +130,43 @@ class Minio {
 
   /// Complete the multipart upload. After all the parts are uploaded issuing
   /// this call will aggregate the parts on the server into a single object.
-  Future<String> completeMultipartUpload(
-    String bucket,
-    String object,
-    String uploadId,
-    List<CompletedPart> parts,
-  ) async {
-    MinioInvalidBucketNameError.check(bucket);
-    MinioInvalidObjectNameError.check(object);
+Future<String> completeMultipartUpload(
+  String bucket,
+  String object,
+  String uploadId,
+  List<CompletedPart> parts,
+) async {
+  MinioInvalidBucketNameError.check(bucket);
+  MinioInvalidObjectNameError.check(object);
 
-    var queries = {'uploadId': uploadId};
-    var payload = CompleteMultipartUpload(parts).toXml().toString();
+  var queries = {'uploadId': uploadId};
+  var payload = CompleteMultipartUpload(parts).toXml().toString();
 
-    final resp = await _client.request(
-      method: 'POST',
-      bucket: bucket,
-      object: object,
-      queries: queries,
-      payload: payload,
-    );
-    validate(resp, expect: 200);
+  final resp = await _client.request(
+    method: 'POST',
+    bucket: bucket,
+    object: object,
+    queries: queries,
+    payload: payload,
+  );
+  validate(resp, expect: 200);
 
-    final node = xml.XmlDocument.parse(resp.body);
-    final errorNode = node.findAllElements('Error');
-    if (errorNode.isNotEmpty) {
-      final error = Error.fromXml(errorNode.first);
-      throw MinioS3Error(error.message, error, resp);
-    }
-
-    final etag = node.findAllElements('ETag').first.text;
-    return etag;
+  final node = xml.XmlDocument.parse(resp.body);
+  final errorNode = node.findAllElements('Error');
+  if (errorNode.isNotEmpty) {
+    final error = Error.fromXml(errorNode.first);
+    throw MinioS3Error(error.message, error, resp);
   }
+
+  final etagNode = node.findAllElements('ETag').first;
+  final etag = etagNode.value ?? '';
+
+  if (etag.isEmpty) {
+    throw Exception('ETag is null or empty');
+  }
+
+  return etag;
+}
 
   /// Copy the object.
   Future<CopyObjectResult> copyObject(
@@ -279,37 +282,40 @@ class Minio {
   }
 
   /// Gets the region of [bucket]. The region is cached for subsequent calls.
-  Future<String> getBucketRegion(String bucket) async {
-    MinioInvalidBucketNameError.check(bucket);
+Future<String> getBucketRegion(String bucket) async {
+  MinioInvalidBucketNameError.check(bucket);
 
-    if (region != null) {
-      return region!;
-    }
-
-    if (_regionMap.containsKey(bucket)) {
-      return _regionMap[bucket]!;
-    }
-
-    final resp = await _client.request(
-      method: 'GET',
-      bucket: bucket,
-      region: 'us-east-1',
-      queries: <String, dynamic>{'location': null},
-    );
-
-    validate(resp);
-
-    final node = xml.XmlDocument.parse(resp.body);
-
-    var location = node.findAllElements('LocationConstraint').first.text;
-    // if (location == null || location.isEmpty) {
-    if (location.isEmpty) {
-      location = 'us-east-1';
-    }
-
-    _regionMap[bucket] = location;
-    return location;
+  if (region != null) {
+    return region!;
   }
+
+  if (_regionMap.containsKey(bucket)) {
+    return _regionMap[bucket]!;
+  }
+
+  final resp = await _client.request(
+    method: 'GET',
+    bucket: bucket,
+    region: 'us-east-1',
+    queries: <String, dynamic>{'location': null},
+  );
+
+  validate(resp);
+
+  final node = xml.XmlDocument.parse(resp.body);
+
+  // Check if 'LocationConstraint' is present and has a non-null value
+  var location = node.findAllElements('LocationConstraint').first.value;
+  if (location == null || location.isEmpty) {
+    location = 'us-east-1';
+  }
+
+  // Store the location in the region map
+  _regionMap[bucket] = location;
+
+  // Return the location which is guaranteed to be non-null
+  return location;
+}
 
   /// get a readable stream of the object content.
   Future<MinioByteStream> getObject(String bucket, String object) {
@@ -360,28 +366,35 @@ class Minio {
     );
   }
 
-  /// Initiate a new multipart upload.
-  Future<String> initiateNewMultipartUpload(
-    String bucket,
-    String object,
-    Map<String, String>? metaData,
-  ) async {
-    MinioInvalidBucketNameError.check(bucket);
-    MinioInvalidObjectNameError.check(object);
+  /// Initiate a new multipart upload. 
+Future<String> initiateNewMultipartUpload(
+  String bucket,
+  String object,
+  Map<String, String>? metaData,
+) async {
+  MinioInvalidBucketNameError.check(bucket);
+  MinioInvalidObjectNameError.check(object);
 
-    final resp = await _client.request(
-      method: 'POST',
-      bucket: bucket,
-      object: object,
-      headers: metaData,
-      resource: 'uploads',
-    );
+  final resp = await _client.request(
+    method: 'POST',
+    bucket: bucket,
+    object: object,
+    headers: metaData,
+    resource: 'uploads',
+  );
 
-    validate(resp, expect: 200);
+  validate(resp, expect: 200);
 
-    final node = xml.XmlDocument.parse(resp.body);
-    return node.findAllElements('UploadId').first.text;
+  final node = xml.XmlDocument.parse(resp.body);
+  final uploadId = node.findAllElements('UploadId').first.value;
+
+  if (uploadId == null) {
+    throw Exception('Failed to initiate multipart upload: UploadId is null');
   }
+
+  return uploadId;
+}
+
 
   /// Returns a stream that emits objects that are partially uploaded.
   Stream<IncompleteUpload> listIncompleteUploads(
@@ -539,52 +552,53 @@ class Minio {
     );
   }
 
-  /// list a batch of objects
-  Future<ListObjectsOutput> listObjectsQuery(
-    String bucket,
-    String prefix,
-    String? marker,
-    String delimiter,
-    int? maxKeys,
-  ) async {
-    MinioInvalidBucketNameError.check(bucket);
-    MinioInvalidPrefixError.check(prefix);
+/// List a batch of objects
+Future<ListObjectsOutput> listObjectsQuery(
+  String bucket,
+  String prefix,
+  String? marker,
+  String delimiter,
+  int? maxKeys,
+) async {
+  MinioInvalidBucketNameError.check(bucket);
+  MinioInvalidPrefixError.check(prefix);
 
-    final queries = <String, dynamic>{};
-    queries['prefix'] = prefix;
-    queries['delimiter'] = delimiter;
+  final queries = <String, dynamic>{};
+  queries['prefix'] = prefix;
+  queries['delimiter'] = delimiter;
 
-    if (marker != null) {
-      queries['marker'] = marker;
-    }
-
-    if (maxKeys != null) {
-      maxKeys = maxKeys >= 1000 ? 1000 : maxKeys;
-      queries['maxKeys'] = maxKeys.toString();
-    }
-
-    final resp = await _client.request(
-      method: 'GET',
-      bucket: bucket,
-      queries: queries,
-    );
-
-    validate(resp);
-
-    final node = xml.XmlDocument.parse(resp.body);
-    final isTruncated = getNodeProp(node.rootElement, 'IsTruncated')!.text;
-    final nextMarker = getNodeProp(node.rootElement, 'NextMarker')?.text;
-    final objs = node.findAllElements('Contents').map((c) => Object.fromXml(c));
-    final prefixes = node
-        .findAllElements('CommonPrefixes')
-        .map((c) => CommonPrefix.fromXml(c));
-
-    return ListObjectsOutput()
-      ..contents = objs.toList()
-      ..commonPrefixes = prefixes.toList()
-      ..isTruncated = isTruncated.toLowerCase() == 'true'
-      ..nextMarker = nextMarker;
+  if (marker != null) {
+    queries['marker'] = marker;
   }
+
+  if (maxKeys != null) {
+    maxKeys = maxKeys >= 1000 ? 1000 : maxKeys;
+    queries['max-keys'] = maxKeys.toString(); // Updated to use 'max-keys'
+  }
+
+  final resp = await _client.request(
+    method: 'GET',
+    bucket: bucket,
+    queries: queries,
+  );
+
+  validate(resp);
+
+  final node = xml.XmlDocument.parse(resp.body);
+
+  // Safely access 'IsTruncated' and 'NextMarker' with null checks
+  final isTruncated = getNodeProp(node.rootElement, 'IsTruncated')?.value?.toLowerCase() == 'true';
+  final nextMarker = getNodeProp(node.rootElement, 'NextMarker')?.value;
+
+  final objs = node.findAllElements('Contents').map((c) => Object.fromXml(c));
+  final prefixes = node.findAllElements('CommonPrefixes').map((c) => CommonPrefix.fromXml(c));
+
+  return ListObjectsOutput()
+    ..contents = objs.toList()
+    ..commonPrefixes = prefixes.toList()
+    ..isTruncated = isTruncated
+    ..nextMarker = nextMarker;
+}
 
   /// Returns all [Object]s in a bucket.
   /// To list objects in a bucket with prefix, set [prefix] to the desired prefix.
@@ -643,59 +657,59 @@ class Minio {
     );
   }
 
-  /// listObjectsV2Query - (List Objects V2) - List some or all (up to 1000) of the objects in a bucket.
-  Future<ListObjectsV2Output> listObjectsV2Query(
-    String bucket,
-    String prefix,
-    String? continuationToken,
-    String delimiter,
-    int? maxKeys,
-    String? startAfter,
-  ) async {
-    MinioInvalidBucketNameError.check(bucket);
-    MinioInvalidPrefixError.check(prefix);
+/// listObjectsV2Query - (List Objects V2) - List some or all (up to 1000) of the objects in a bucket.
+Future<ListObjectsV2Output> listObjectsV2Query(
+  String bucket,
+  String prefix,
+  String? continuationToken,
+  String delimiter,
+  int? maxKeys,
+  String? startAfter,
+) async {
+  MinioInvalidBucketNameError.check(bucket);
+  MinioInvalidPrefixError.check(prefix);
 
-    final queries = <String, dynamic>{};
-    queries['prefix'] = prefix;
-    queries['delimiter'] = delimiter;
-    queries['list-type'] = '2';
+  final queries = <String, dynamic>{};
+  queries['prefix'] = prefix;
+  queries['delimiter'] = delimiter;
+  queries['list-type'] = '2';
 
-    if (continuationToken != null) {
-      queries['continuation-token'] = continuationToken;
-    }
-
-    if (startAfter != null) {
-      queries['start-after'] = startAfter;
-    }
-
-    if (maxKeys != null) {
-      maxKeys = maxKeys >= 1000 ? 1000 : maxKeys;
-      queries['maxKeys'] = maxKeys.toString();
-    }
-
-    final resp = await _client.request(
-      method: 'GET',
-      bucket: bucket,
-      queries: queries,
-    );
-
-    validate(resp);
-
-    final node = xml.XmlDocument.parse(resp.body);
-    final isTruncated = getNodeProp(node.rootElement, 'IsTruncated')!.text;
-    final nextContinuationToken =
-        getNodeProp(node.rootElement, 'NextContinuationToken')?.text;
-    final objs = node.findAllElements('Contents').map((c) => Object.fromXml(c));
-    final prefixes = node
-        .findAllElements('CommonPrefixes')
-        .map((c) => CommonPrefix.fromXml(c));
-
-    return ListObjectsV2Output()
-      ..contents = objs.toList()
-      ..commonPrefixes = prefixes.toList()
-      ..isTruncated = isTruncated.toLowerCase() == 'true'
-      ..nextContinuationToken = nextContinuationToken;
+  if (continuationToken != null) {
+    queries['continuation-token'] = continuationToken;
   }
+
+  if (startAfter != null) {
+    queries['start-after'] = startAfter;
+  }
+
+  if (maxKeys != null) {
+    maxKeys = maxKeys >= 1000 ? 1000 : maxKeys;
+    queries['max-keys'] = maxKeys.toString(); // Updated to use 'max-keys'
+  }
+
+  final resp = await _client.request(
+    method: 'GET',
+    bucket: bucket,
+    queries: queries,
+  );
+
+  validate(resp);
+
+  final node = xml.XmlDocument.parse(resp.body);
+
+  // Safely access 'IsTruncated' and 'NextContinuationToken' with null checks
+  final isTruncated = getNodeProp(node.rootElement, 'IsTruncated')?.value?.toLowerCase() == 'true';
+  final nextContinuationToken = getNodeProp(node.rootElement, 'NextContinuationToken')?.value;
+
+  final objs = node.findAllElements('Contents').map((c) => Object.fromXml(c));
+  final prefixes = node.findAllElements('CommonPrefixes').map((c) => CommonPrefix.fromXml(c));
+
+  return ListObjectsV2Output()
+    ..contents = objs.toList()
+    ..commonPrefixes = prefixes.toList()
+    ..isTruncated = isTruncated
+    ..nextContinuationToken = nextContinuationToken;
+}
 
   /// Get part-info of all parts of an incomplete upload specified by uploadId.
   Stream<Part> listParts(
@@ -824,9 +838,9 @@ class Minio {
     postPolicy.formData['x-amz-algorithm'] = 'AWS4-HMAC-SHA256';
 
     postPolicy.policy['conditions'].push(
-        ['eq', r'$x-amz-credential', accessKey + '/' + getScope(region, date)]);
+        ['eq', r'$x-amz-credential', '$accessKey/${getScope(region, date)}']);
     postPolicy.formData['x-amz-credential'] =
-        accessKey + '/' + getScope(region, date);
+        '$accessKey/${getScope(region, date)}';
 
     if (sessionToken != null) {
       postPolicy.policy['conditions']

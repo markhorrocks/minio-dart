@@ -130,24 +130,25 @@ class MinioUploader implements StreamConsumer<Uint8List> {
     return etag;
   }
 
-  Future<void> _initMultipartUpload() async {
-    //FIXME: this code still causes Signature Error
-    //FIXME: https://github.com/xtyxtyx/minio-dart/issues/7
-    //TODO: uncomment when fixed
-    // uploadId = await minio.findUploadId(bucket, object);
-
+Future<void> _initMultipartUpload() async {
+  try {
+    // Ensure you are using the correct bucket, object, and metadata
     if (_uploadId == null) {
-      _uploadId =
-          await minio.initiateNewMultipartUpload(bucket, object, metadata);
-      return;
+      _uploadId = await minio.initiateNewMultipartUpload(bucket, object, metadata);
+    } else {
+      final parts = minio.listParts(bucket, object, _uploadId!);
+      final entries = await parts
+          .asyncMap((part) => MapEntry(part.partNumber, part))
+          .toList();
+      _oldParts = Map.fromEntries(entries);
     }
-
-    final parts = minio.listParts(bucket, object, _uploadId!);
-    final entries = await parts
-        .asyncMap((part) => MapEntry(part.partNumber, part))
-        .toList();
-    _oldParts = Map.fromEntries(entries);
+  } catch (e) {
+    // Log the specific error for debugging
+    print('Error during multipart upload initialization: $e');
+    // Re-throw the error if necessary, or handle it accordingly
+    rethrow;
   }
+}
 
   void _updateProgress(int bytesUploaded) {
     this.bytesUploaded = bytesUploaded;

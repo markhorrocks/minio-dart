@@ -3,8 +3,6 @@ import 'package:minio/src/minio_errors.dart';
 import 'package:minio/src/utils.dart';
 import 'package:xml/xml.dart';
 
-import '../models.dart';
-
 class ListObjectsResult {
   ListObjectsResult({
     required this.objects,
@@ -55,13 +53,13 @@ class CompleteMultipartUpload {
 
 class ListMultipartUploadsOutput {
   ListMultipartUploadsOutput.fromXml(XmlElement xml) {
-    isTruncated = getProp(xml, 'IsLatest')?.text.toUpperCase() == 'TRUE';
-    nextKeyMarker = getProp(xml, 'NextKeyMarker')?.text;
-    nextUploadIdMarker = getProp(xml, 'NextUploadIdMarker')?.text;
-    uploads = xml
-        .findElements('Upload')
-        .map((e) => MultipartUpload.fromXml(e))
-        .toList();
+    final isTruncatedProp = getProp(xml, 'IsTruncated')?.value;
+    isTruncated = isTruncatedProp != null ? isTruncatedProp.toUpperCase() == 'TRUE' : null;
+
+    nextKeyMarker = getProp(xml, 'NextKeyMarker')?.value;
+    nextUploadIdMarker = getProp(xml, 'NextUploadIdMarker')?.value;
+
+    uploads = xml.findElements('Upload').map((e) => MultipartUpload.fromXml(e)).toList();
   }
 
   bool? isTruncated;
@@ -70,18 +68,23 @@ class ListMultipartUploadsOutput {
   late List<MultipartUpload> uploads;
 }
 
+
 class ListPartsOutput {
   ListPartsOutput.fromXml(XmlElement xml) {
-    isTruncated = getProp(xml, 'IsLatest')?.text.toUpperCase() == 'TRUE';
-    nextPartNumberMarker =
-        int.parse(getProp(xml, 'NextPartNumberMarker')!.text);
-    parts = xml.findElements('Upload').map((e) => Part.fromXml(e)).toList();
+    final isTruncatedProp = getProp(xml, 'IsTruncated')?.value;
+    isTruncated = isTruncatedProp != null ? isTruncatedProp.toUpperCase() == 'TRUE' : false;
+
+    final nextPartNumberMarkerProp = getProp(xml, 'NextPartNumberMarker')?.value;
+    nextPartNumberMarker = nextPartNumberMarkerProp != null ? int.tryParse(nextPartNumberMarkerProp) ?? 0 : 0;
+
+    parts = xml.findElements('Part').map((e) => Part.fromXml(e)).toList();
   }
 
   late bool isTruncated;
   late int nextPartNumberMarker;
   late List<Part> parts;
 }
+
 
 class IncompleteUpload {
   IncompleteUpload({

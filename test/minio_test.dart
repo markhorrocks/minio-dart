@@ -324,7 +324,7 @@ void testGetObject() {
     final minio = getMinioClient();
     final bucketName = uniqueName();
     final object = uniqueName();
-    final objectUtf8 = uniqueName() + '/あるところ/某个文件.🦐';
+    final objectUtf8 = '${uniqueName()}/あるところ/某个文件.🦐';
     final objectData = Uint8List.fromList([1, 2, 3]);
 
     setUpAll(() async {
@@ -535,7 +535,7 @@ void testListenBucketNotification() {
   group('listenBucketNotification()', () {
     final minio = getMinioClient();
     final bucketName = uniqueName();
-    // final objectName = uniqueName();
+    final objectName = uniqueName();
 
     setUpAll(() async {
       await minio.makeBucket(bucketName);
@@ -551,33 +551,47 @@ void testListenBucketNotification() {
       poller.stop();
     });
 
-    // test('can receive notification', () async {
-    //   final poller = minio.listenBucketNotification(
-    //     bucketName,
-    //     events: ['s3:ObjectCreated:*'],
-    //   );
+    test('can receive notification', () async {
+      final poller = minio.listenBucketNotification(
+        bucketName,
+        events: ['s3:ObjectCreated:*'],
+      );
 
-    //   final receivedEvents = [];
-    //   poller.stream.listen((event) => receivedEvents.add(event));
-    //   expect(receivedEvents, isEmpty);
+      final receivedEvents = [];
+      final subscription = poller.stream.listen((event) {
+        receivedEvents.add(event);
+      });
 
-    //   await minio.putObject(bucketName, objectName, Stream.value([0]));
-    //   await minio.removeObject(bucketName, objectName);
+      expect(receivedEvents, isEmpty);
 
-    //   // FIXME: Needs sleep here
-    //   expect(receivedEvents, isNotEmpty);
+      // Convert List<int> to Uint8List
+      var data = Uint8List.fromList([0]);
 
-    //   poller.stop();
-    // });
+      // Perform object operations to trigger events
+      await minio.putObject(bucketName, objectName, Stream.value(data));
+      await minio.removeObject(bucketName, objectName);
+
+      // Wait for the events to be received
+      await Future.delayed(Duration(seconds: 2)); // Adjust as necessary
+
+      // Ensure events were received
+      expect(receivedEvents, isNotEmpty);
+
+      // Cleanup
+      await subscription.cancel();
+      poller.stop();
+    });
   });
 }
+
+
 
 void testStatObject() {
   group('statObject()', () {
     final minio = getMinioClient();
     final bucketName = uniqueName();
     final object = uniqueName();
-    final objectUtf8 = uniqueName() + 'オブジェクト。📦';
+    final objectUtf8 = '${uniqueName()}オブジェクト。📦';
     final data = Uint8List.fromList([1, 2, 3, 4, 5]);
 
     setUpAll(() async {
@@ -684,7 +698,10 @@ void testRemoveObject() {
       await minio.removeObject(bucketName, objectName);
 
       await for (var chunk in minio.listObjects(bucketName)) {
-        expect(chunk.objects.contains(objectName), isFalse);
+        expect(
+          chunk.objects.any((obj) => obj.key == objectName),
+          isFalse,
+        );
       }
     });
 
@@ -701,12 +718,13 @@ void testRemoveObject() {
   });
 }
 
+
 void testListObjects() {
   group('listAllObjects()', () {
     final minio = getMinioClient();
     final bucketName = uniqueName();
     final objectName = uniqueName();
-    final objectNameUtf8 = uniqueName() + '文件ファイル。ㄴㅁㄴ';
+    final objectNameUtf8 = '${uniqueName()}文件ファイル。ㄴㅁㄴ';
     final data = Uint8List.fromList([1, 2, 3, 4, 5]);
 
     setUpAll(() async {
