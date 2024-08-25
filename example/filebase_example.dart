@@ -9,7 +9,6 @@ void main() async {
   );
 
   final buckets = await minio.listBuckets();
-  print('buckets: $buckets');
 
   final objects = await minio.listObjects(buckets.first.name).toList();
   print('objects: $objects');

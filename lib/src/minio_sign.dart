@@ -1,4 +1,5 @@
 import 'package:convert/convert.dart';
+import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:minio/minio.dart';
 import 'package:minio/src/minio_client.dart';
@@ -14,9 +15,10 @@ String signV4(
   String region,
 ) {
   final signedHeaders = getSignedHeaders(request.headers.keys);
-  final hashedPayload = request.headers['x-amz-content-sha256'];
+  final hashedPayload =
+      request.headers['x-amz-content-sha256'] ?? 'UNSIGNED-PAYLOAD';
   final canonicalRequest =
-      getCanonicalRequest(request, signedHeaders, hashedPayload!);
+      getCanonicalRequest(request, signedHeaders, hashedPayload);
   final stringToSign = getStringToSign(canonicalRequest, requestDate, region);
   final signingKey = getSigningKey(requestDate, region, minio.secretKey);
   final credential = getCredential(minio.accessKey, region, requestDate);
@@ -26,14 +28,19 @@ String signV4(
   return '$signV4Algorithm Credential=$credential, SignedHeaders=${signedHeaders.join(';').toLowerCase()}, Signature=$signature';
 }
 
+// Ensure each step follows AWS Signature Version 4 specification.
+
 List<String> getSignedHeaders(Iterable<String> headers) {
-  const ignored = {
+  const ignoredHeaders = {
     'authorization',
     'content-length',
     'content-type',
-    'user-agent'
+    'user-agent',
   };
-  final result = headers.where((header) => !ignored.contains(header)).toList();
+  final result = headers
+      .where((header) => !ignoredHeaders.contains(header.toLowerCase()))
+      .map((header) => header.toLowerCase())
+      .toList();
   result.sort();
   return result;
 }
@@ -43,28 +50,26 @@ String getCanonicalRequest(
   List<String> signedHeaders,
   String hashedPayload,
 ) {
-  final requestResource = encodePath(request.url);
+  final requestResource = encodePath(request.url.path);
   final headers = signedHeaders.map(
-    (header) => '${header.toLowerCase()}:${request.headers[header]}',
+    (header) => '${header.toLowerCase()}:${request.headers[header]!.trim()}',
   );
 
   final queryKeys = request.url.queryParameters.keys.toList();
   queryKeys.sort();
   final requestQuery = queryKeys.map((key) {
-    final value = request.url.queryParameters[key];
-    final hasValue = value != null;
-    final valuePart = hasValue ? encodeCanonicalQuery(value) : '';
-    return '${encodeCanonicalQuery(key)}=$valuePart';
+    final value = request.url.queryParameters[key] ?? '';
+    return '${encodeCanonicalQuery(key)}=${encodeCanonicalQuery(value)}';
   }).join('&');
 
-  final canonical = [];
-  canonical.add(request.method.toUpperCase());
-  canonical.add(requestResource);
-  canonical.add(requestQuery);
-  canonical.add('${headers.join('\n')}\n');
-  canonical.add(signedHeaders.join(';').toLowerCase());
-  canonical.add(hashedPayload);
-  return canonical.join('\n');
+  return [
+    request.method.toUpperCase(),
+    requestResource,
+    requestQuery,
+    '${headers.join('\n')}\n',
+    signedHeaders.join(';').toLowerCase(),
+    hashedPayload,
+  ].join('\n');
 }
 
 String getStringToSign(
@@ -74,12 +79,12 @@ String getStringToSign(
 ) {
   final hash = sha256Hex(canonicalRequest);
   final scope = getScope(region, requestDate);
-  final stringToSign = [];
-  stringToSign.add(signV4Algorithm);
-  stringToSign.add(makeDateLong(requestDate));
-  stringToSign.add(scope);
-  stringToSign.add(hash);
-  return stringToSign.join('\n');
+  return [
+    signV4Algorithm,
+    makeDateLong(requestDate),
+    scope,
+    hash,
+  ].join('\n');
 }
 
 String getScope(String region, DateTime date) {
@@ -87,19 +92,18 @@ String getScope(String region, DateTime date) {
 }
 
 List<int> getSigningKey(DateTime date, String region, String secretKey) {
-  final dateLine = makeDateShort(date);
-  final key1 = ('AWS4$secretKey').codeUnits;
-  final hmac1 = Hmac(sha256, key1).convert(dateLine.codeUnits).bytes;
-  final hmac2 = Hmac(sha256, hmac1).convert(region.codeUnits).bytes;
-  final hmac3 = Hmac(sha256, hmac2).convert('s3'.codeUnits).bytes;
-  return Hmac(sha256, hmac3).convert('aws4_request'.codeUnits).bytes;
+  final dateStamp = makeDateShort(date);
+  final kSecret = utf8.encode('AWS4$secretKey');
+  final kDate = Hmac(sha256, kSecret).convert(utf8.encode(dateStamp)).bytes;
+  final kRegion = Hmac(sha256, kDate).convert(utf8.encode(region)).bytes;
+  final kService = Hmac(sha256, kRegion).convert(utf8.encode('s3')).bytes;
+  return Hmac(sha256, kService).convert(utf8.encode('aws4_request')).bytes;
 }
 
 String getCredential(String accessKey, String region, DateTime requestDate) {
   return '$accessKey/${getScope(region, requestDate)}';
 }
 
-// returns a presigned URL string
 String presignSignatureV4(
   Minio minio,
   MinioRequest request,
@@ -108,7 +112,7 @@ String presignSignatureV4(
   int expires,
 ) {
   if (expires < 1) {
-    throw MinioExpiresParamError('expires param cannot be less than 1 seconds');
+    throw MinioExpiresParamError('expires param cannot be less than 1 second');
   }
   if (expires > 604800) {
     throw MinioExpiresParamError('expires param cannot be greater than 7 days');
@@ -137,16 +141,12 @@ String presignSignatureV4(
 
   final canonicalRequest =
       getCanonicalRequest(request, signedHeaders, 'UNSIGNED-PAYLOAD');
-
   final stringToSign = getStringToSign(canonicalRequest, requestDate, region);
   final signingKey = getSigningKey(requestDate, region, minio.secretKey);
   final signature = sha256HmacHex(stringToSign, signingKey);
-  final presignedUrl = '${request.url}&X-Amz-Signature=$signature';
-
-  return presignedUrl;
+  return '${request.url}&X-Amz-Signature=$signature';
 }
 
-// calculate the signature of the POST policy
 String postPresignSignatureV4(
   String region,
   DateTime date,
@@ -155,4 +155,23 @@ String postPresignSignatureV4(
 ) {
   final signingKey = getSigningKey(date, region, secretKey);
   return sha256HmacHex(policyBase64, signingKey);
+}
+
+String sha256HmacHex(String data, List<int> key) {
+  final hmac = Hmac(sha256, key);
+  return hex.encode(hmac.convert(utf8.encode(data)).bytes);
+}
+
+String encodeCanonicalQuery(String query) {
+  // Encode the query following AWS rules
+  return Uri.encodeQueryComponent(query).replaceAll('+', '%20');
+}
+
+String encodePath(String path) {
+  // Encode the path following AWS rules
+  return Uri.encodeFull(path);
+}
+
+String makeDateShort(DateTime date) {
+  return date.toUtc().toIso8601String().split('T')[0].replaceAll('-', '');
 }

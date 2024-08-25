@@ -584,8 +584,6 @@ void testListenBucketNotification() {
   });
 }
 
-
-
 void testStatObject() {
   group('statObject()', () {
     final minio = getMinioClient();
@@ -718,7 +716,6 @@ void testRemoveObject() {
   });
 }
 
-
 void testListObjects() {
   group('listAllObjects()', () {
     final minio = getMinioClient();
@@ -741,7 +738,6 @@ void testListObjects() {
 
     test('succeeds', () async {
       final result = await minio.listAllObjects(bucketName);
-      print(result);
       expect(result.objects.map((e) => e.key).contains(objectName), isTrue);
       expect(result.objects.map((e) => e.key).contains(objectNameUtf8), isTrue);
     });

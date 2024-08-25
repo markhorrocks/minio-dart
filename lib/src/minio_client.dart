@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:http/http.dart';
 import 'package:minio/minio.dart';
 import 'package:minio/src/minio_helpers.dart';
-import 'package:minio/src/minio_s3.dart';
 import 'package:minio/src/minio_sign.dart';
 import 'package:minio/src/utils.dart';
 
@@ -13,7 +12,6 @@ class MinioRequest extends BaseRequest {
   MinioRequest(super.method, super.url, {this.onProgress});
 
   dynamic body;
-
   final void Function(int)? onProgress;
 
   @override
@@ -36,7 +34,9 @@ class MinioRequest extends BaseRequest {
       stream = Stream<Uint8List>.value(body);
       headers['content-length'] = body.length.toString();
     } else {
-      throw UnsupportedError('Unsupported body type: ${body.runtimeType}');
+      throw UnsupportedError(
+        'Unsupported body type: ${body.runtimeType}. Supported types are Stream<Uint8List>, String, and Uint8List.',
+      );
     }
 
     if (onProgress == null) {
@@ -73,15 +73,11 @@ class MinioRequest extends BaseRequest {
   }
 }
 
-/// An HTTP response where the entire response body is known in advance.
 class MinioResponse extends BaseResponse {
-  /// The bytes comprising the body of this response.
   final Uint8List bodyBytes;
 
-  /// Body of s3 response is always encoded as UTF-8.
   String get body => utf8.decode(bodyBytes);
 
-  /// Create a new HTTP response with a byte array body.
   MinioResponse.bytes(
     this.bodyBytes,
     int statusCode, {
@@ -90,22 +86,33 @@ class MinioResponse extends BaseResponse {
     bool isRedirect = false,
     bool persistentConnection = true,
     String? reasonPhrase,
-  }) : super(statusCode,
-            contentLength: bodyBytes.length,
-            request: request,
-            headers: headers,
-            isRedirect: isRedirect,
-            persistentConnection: persistentConnection,
-            reasonPhrase: reasonPhrase);
+  }) : super(
+          statusCode,
+          contentLength: bodyBytes.length,
+          request: request,
+          headers: headers,
+          isRedirect: isRedirect,
+          persistentConnection: persistentConnection,
+          reasonPhrase: reasonPhrase,
+        );
 
   static Future<MinioResponse> fromStream(StreamedResponse response) async {
-    final body = await response.stream.toBytes();
-    return MinioResponse.bytes(body, response.statusCode,
+    try {
+      final body = await response.stream.toBytes();
+      return MinioResponse.bytes(
+        body,
+        response.statusCode,
         request: response.request,
         headers: response.headers,
         isRedirect: response.isRedirect,
         persistentConnection: response.persistentConnection,
-        reasonPhrase: response.reasonPhrase);
+        reasonPhrase: response.reasonPhrase,
+      );
+    } catch (e, stackTrace) {
+      print('Failed to process response: $e');
+      print(stackTrace);
+      throw MinioError('Failed to process response: $e');
+    }
   }
 }
 
@@ -117,11 +124,26 @@ class MinioClient {
   }
 
   final Minio minio;
-  final String userAgent = 'MinIO (Unknown; Unknown) minio-dart/2.0.0';
+  final String userAgent = 'MinIO (Unknown; Unknown) minio-dart/3.6.1';
 
   late bool enableSHA256;
   late bool anonymous;
   late final int port;
+
+  bool endpointContainsRegion(String endPoint, List<String> knownRegions) {
+    // Split the endpoint by '.'
+    List<String> parts = endPoint.split('.');
+
+    // Check if any part of the endpoint matches a known region
+    for (String part in parts) {
+      if (knownRegions.contains(part)) {
+        return true;
+      }
+    }
+
+    // If no known region is found in the endpoint
+    return false;
+  }
 
   Future<StreamedResponse> _request({
     required String method,
@@ -134,30 +156,96 @@ class MinioClient {
     Map<String, String>? headers,
     void Function(int)? onProgress,
   }) async {
-    if (bucket != null) {
-      region ??= await minio.getBucketRegion(bucket);
+    // Define the list of known regions your service supports
+    const List<String> knownRegions = [
+      'us-east-1',
+      'us-east-2',
+      'us-west-1',
+      'us-west-2',
+      'af-south-1',
+      'ap-east-1',
+      'ap-south-1',
+      'ap-south-2',
+      'ap-northeast-1',
+      'ap-northeast-2',
+      'ap-northeast-3',
+      'ap-southeast-1',
+      'ap-southeast-2',
+      'ap-southeast-3',
+      'ca-central-1',
+      'eu-central-1',
+      'eu-west-1',
+      'eu-west-2',
+      'eu-west-3',
+      'eu-south-1',
+      'eu-north-1',
+      'eu-central-2',
+      'me-south-1',
+      'me-central-1',
+      'sa-east-1',
+    ];
+
+    try {
+      // Call getBucketRegion only if region is not provided, bucket is provided, and endpoint does not contain a region
+      if (bucket != null &&
+          region == null &&
+          !endpointContainsRegion(minio.endPoint, knownRegions)) {
+        // Get the region of the bucket if it's not explicitly provided
+        region = await minio.getBucketRegion(bucket);
+      }
+
+      // If region is explicitly provided, or inferred from bucket, and is not part of endpoint, use it in the request
+      if (region != null &&
+          !endpointContainsRegion(minio.endPoint, knownRegions)) {
+      } else {
+        // Clear region to avoid duplication if endpoint already contains the region
+        region = null;
+      }
+
+      // Construct the base request
+      final request = getBaseRequest(
+        method,
+        bucket,
+        object,
+        minio.endPoint,
+        region,
+        resource,
+        queries,
+        headers,
+        onProgress,
+        minio.useSSL,
+        port,
+      );
+
+      request.body = payload;
+
+      final date = DateTime.now().toUtc();
+      final sha256sum = enableSHA256 ? sha256Hex(payload) : 'UNSIGNED-PAYLOAD';
+      request.headers.addAll({
+        'user-agent': userAgent,
+        'x-amz-date': makeDateLong(date),
+        'x-amz-content-sha256': sha256sum,
+      });
+
+      try {
+        // Ensure the region used for signing matches the request URL and headers
+        final authorization = signV4(minio, request, date, region ?? '');
+        request.headers['authorization'] = authorization;
+      } catch (e, stackTrace) {
+        print('Failed to sign request: $e');
+        print(stackTrace);
+        throw MinioError('Failed to sign request: $e');
+      }
+
+      logRequest(request);
+
+      final response = await request.send();
+      return response;
+    } catch (e, stackTrace) {
+      print('Request failed: $e');
+      print(stackTrace);
+      throw MinioError('Failed to send request: $e');
     }
-
-    region ??= 'us-east-1';
-
-    final request = getBaseRequest(
-        method, bucket, object, region, resource, queries, headers, onProgress);
-    request.body = payload;
-
-    final date = DateTime.now().toUtc();
-    final sha256sum = enableSHA256 ? sha256Hex(payload) : 'UNSIGNED-PAYLOAD';
-    request.headers.addAll({
-      'user-agent': userAgent,
-      'x-amz-date': makeDateLong(date),
-      'x-amz-content-sha256': sha256sum,
-    });
-
-    final authorization = signV4(minio, request, date, region);
-    request.headers['authorization'] = authorization;
-
-    logRequest(request);
-    final response = await request.send();
-    return response;
   }
 
   Future<MinioResponse> request({
@@ -186,6 +274,13 @@ class MinioClient {
     final response = await MinioResponse.fromStream(stream);
     logResponse(response);
 
+    if (response.statusCode >= 400) {
+      print('HTTP Error: ${response.statusCode} ${response.reasonPhrase}');
+      print('Response Body: ${response.body}');
+      throw MinioError(
+          'HTTP error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+
     return response;
   }
 
@@ -211,6 +306,13 @@ class MinioClient {
     );
 
     logResponse(response);
+
+    if (response.statusCode >= 400) {
+      print('HTTP Error: ${response.statusCode} ${response.reasonPhrase}');
+      throw MinioError(
+          'HTTP error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+
     return response;
   }
 
@@ -218,44 +320,85 @@ class MinioClient {
     String method,
     String? bucket,
     String? object,
-    String region,
+    String endPoint,
+    String? region,
     String? resource,
     Map<String, dynamic>? queries,
     Map<String, String>? headers,
     void Function(int)? onProgress,
+    bool useSSL,
+    int? port,
   ) {
-    final url = getRequestUrl(bucket, object, resource, queries);
-    final request = MinioRequest(method, url, onProgress: onProgress);
-    request.headers['host'] = url.authority;
+    // Generate the URL using user-supplied values
+    final url = getRequestUrl(
+      endPoint: endPoint,
+      region: region,
+      bucket: bucket,
+      object: object,
+      resource: resource,
+      queries: queries,
+      useSSL: useSSL,
+      port: port,
+    );
 
+    // Initialize the MinioRequest with the generated URL and method
+    final request = MinioRequest(method, url, onProgress: onProgress);
+
+    // Add the host header (important for signature validation)
+    request.headers['host'] =
+        url.host; // Ensure this matches exactly with the generated URL
+
+    // Add any additional headers provided by the user
     if (headers != null) {
       request.headers.addAll(headers);
     }
 
+    // Set necessary headers for signing
+    request.headers['x-amz-content-sha256'] = 'UNSIGNED-PAYLOAD';
+    request.headers['x-amz-date'] = makeDateLong(DateTime.now().toUtc());
+
     return request;
   }
 
-  Uri getRequestUrl(
+  Uri getRequestUrl({
+    required String endPoint,
+    String? region,
     String? bucket,
     String? object,
     String? resource,
     Map<String, dynamic>? queries,
-  ) {
-    var host = minio.endPoint.toLowerCase();
+    bool useSSL = true,
+    int? port,
+  }) {
+    // Determine the base host
+    String baseHost = endPoint;
+
+    // Check if the endpoint already includes a region or if a region is explicitly provided
+    if (region != null && !endPoint.contains('.$region.')) {
+      // Construct baseHost with the supplied region only if the endpoint does not already have it
+      if (!endPoint.contains('.$region.')) {
+        // Use region to modify baseHost only when it's not already present
+        final parts = endPoint.split('.');
+        if (parts.first == 's3') {
+          // Endpoint starts with 's3', so insert the region
+          baseHost = 's3.$region.${parts.skip(1).join('.')}';
+        } else {
+          // Prepend 's3.' and region to the endpoint
+          baseHost = 's3.$region.$endPoint';
+        }
+      }
+    }
+
+    // Construct path-style URL (bucket name in path, not in host)
     var path = '/';
-
-    if (isAmazonEndpoint(host)) {
-      host = getS3Endpoint(minio.region!);
+    if (bucket != null) {
+      path += bucket;
+    }
+    if (object != null) {
+      path += '/$object';
     }
 
-    if (isVirtualHostStyle(host, minio.useSSL, bucket)) {
-      if (bucket != null) host = '$bucket.$host';
-      if (object != null) path = '/$object';
-    } else {
-      if (bucket != null) path = '/$bucket';
-      if (object != null) path = '/$bucket/$object';
-    }
-
+    // Prepare query string
     final query = StringBuffer();
     if (resource != null) {
       query.write(resource);
@@ -266,10 +409,11 @@ class MinioClient {
     }
 
     return Uri(
-      scheme: minio.useSSL ? 'https' : 'http',
-      host: host,
-      port: minio.port,
-      pathSegments: path.split('/'),
+      scheme: useSSL ? 'https' : 'http',
+      host: baseHost,
+      port: port,
+      pathSegments:
+          path.split('/').where((segment) => segment.isNotEmpty).toList(),
       query: query.toString(),
     );
   }
@@ -301,7 +445,7 @@ class MinioClient {
       buffer.writeln('${header.key}: ${header.value}');
     }
 
-    if (response is Response) {
+    if (response is MinioResponse) {
       buffer.writeln(response.body);
     } else if (response is StreamedResponse) {
       buffer.writeln('STREAMED BODY');
