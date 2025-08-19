@@ -263,7 +263,7 @@ class Minio {
   /// Get the bucket policy associated with the specified bucket. If `objectPrefix`
   /// is not empty, the bucket policy will be filtered based on object permissions
   /// as well.
-  Future<Map<String, dynamic>?> getBucketPolicy(bucket) async {
+  Future<Map<String, dynamic>?> getBucketPolicy(String bucket) async {
     MinioInvalidBucketNameError.check(bucket);
 
     final resp = await _client.request(

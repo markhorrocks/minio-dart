@@ -1,6 +1,5 @@
 import 'package:xml/xml.dart';
 
-
 XmlElement? getProp(XmlElement? xml, String name) {
   if (xml == null) return null;
   final result = xml.findElements(name);
@@ -13,12 +12,13 @@ class AbortIncompleteMultipartUpload {
     this.daysAfterInitiation,
   );
 
-AbortIncompleteMultipartUpload.fromXml(XmlElement? xml) {
-  final daysAfterInitiationString = getProp(xml, 'DaysAfterInitiation')?.value;
-  daysAfterInitiation = daysAfterInitiationString != null
-      ? int.tryParse(daysAfterInitiationString)
-      : null;
-}
+  AbortIncompleteMultipartUpload.fromXml(XmlElement? xml) {
+    final daysAfterInitiationString =
+        getProp(xml, 'DaysAfterInitiation')?.value;
+    daysAfterInitiation = daysAfterInitiationString != null
+        ? int.tryParse(daysAfterInitiationString)
+        : null;
+  }
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -275,18 +275,18 @@ class Bucket {
   );
 
   factory Bucket.fromXml(XmlElement xml) {
-  final creationDateString = getProp(xml, 'CreationDate')?.value;
-  final name = getProp(xml, 'Name')?.value;
+    final creationDateString = getProp(xml, 'CreationDate')?.value;
+    final name = getProp(xml, 'Name')?.value;
 
-  if (creationDateString == null || name == null) {
-    throw Exception('Missing required XML properties');
+    if (creationDateString == null || name == null) {
+      throw Exception('Missing required XML properties');
+    }
+
+    return Bucket(
+      DateTime.parse(creationDateString),
+      name,
+    );
   }
-
-  return Bucket(
-    DateTime.parse(creationDateString),
-    name,
-  );
-}
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -451,17 +451,16 @@ class CompletedPart {
   );
 
   CompletedPart.fromXml(XmlElement? xml) {
-  eTag = getProp(xml, 'ETag')?.value;
-  
-  // Use a null-aware operator to safely parse the integer
-  final partNumberString = getProp(xml, 'PartNumber')?.value;
-  if (partNumberString != null) {
-    partNumber = int.tryParse(partNumberString);
-  } else {
-    partNumber = null;  // Handle the null case as needed
-  }
-}
+    eTag = getProp(xml, 'ETag')?.value;
 
+    // Use a null-aware operator to safely parse the integer
+    final partNumberString = getProp(xml, 'PartNumber')?.value;
+    if (partNumberString != null) {
+      partNumber = int.tryParse(partNumberString);
+    } else {
+      partNumber = null; // Handle the null case as needed
+    }
+  }
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -529,17 +528,17 @@ class CopyObjectResult {
     this.lastModified,
   );
 
-CopyObjectResult.fromXml(XmlElement xml) {
-  eTag = getProp(xml, 'ETag')?.value;
+  CopyObjectResult.fromXml(XmlElement xml) {
+    eTag = getProp(xml, 'ETag')?.value;
 
-  // Safely parse the lastModified date
-  final lastModifiedString = getProp(xml, 'LastModified')?.value;
-  if (lastModifiedString != null) {
-    lastModified = DateTime.parse(lastModifiedString);
-  } else {
-    lastModified = null;  // Handle the null case as needed
+    // Safely parse the lastModified date
+    final lastModifiedString = getProp(xml, 'LastModified')?.value;
+    if (lastModifiedString != null) {
+      lastModified = DateTime.parse(lastModifiedString);
+    } else {
+      lastModified = null; // Handle the null case as needed
+    }
   }
-}
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -564,17 +563,17 @@ class CopyPartResult {
     this.lastModified,
   );
 
-CopyPartResult.fromXml(XmlElement xml) {
-  eTag = getProp(xml, 'ETag')?.value;
+  CopyPartResult.fromXml(XmlElement xml) {
+    eTag = getProp(xml, 'ETag')?.value;
 
-  // Safely parse the lastModified date
-  final lastModifiedString = getProp(xml, 'LastModified')?.value;
-  if (lastModifiedString != null) {
-    lastModified = DateTime.parse(lastModifiedString);
-  } else {
-    lastModified = null;  // Handle the null case as needed
+    // Safely parse the lastModified date
+    final lastModifiedString = getProp(xml, 'LastModified')?.value;
+    if (lastModifiedString != null) {
+      lastModified = DateTime.parse(lastModifiedString);
+    } else {
+      lastModified = null; // Handle the null case as needed
+    }
   }
-}
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -630,14 +629,14 @@ class CORSRule {
     allowedOrigins = getProp(xml, 'AllowedOrigins')?.value;
     exposeHeaders = getProp(xml, 'ExposeHeaders')?.value;
 
-  // Safely parse maxAgeSeconds
-  final maxAgeString = getProp(xml, 'MaxAgeSeconds')?.value;
-  if (maxAgeString != null) {
-    maxAgeSeconds = int.tryParse(maxAgeString);
-  } else {
-    maxAgeSeconds = null; // Handle the null case as needed
+    // Safely parse maxAgeSeconds
+    final maxAgeString = getProp(xml, 'MaxAgeSeconds')?.value;
+    if (maxAgeString != null) {
+      maxAgeSeconds = int.tryParse(maxAgeString);
+    } else {
+      maxAgeSeconds = null; // Handle the null case as needed
+    }
   }
-}
 
   XmlNode toXml() {
     final builder = XmlBuilder();
@@ -710,7 +709,9 @@ class CSVInput {
 
   CSVInput.fromXml(XmlElement? xml) {
     allowQuotedRecordDelimiter =
-        (getProp(xml, 'AllowQuotedRecordDelimiter')?.value?.toUpperCase() ?? '') == 'TRUE';
+        (getProp(xml, 'AllowQuotedRecordDelimiter')?.value?.toUpperCase() ??
+                '') ==
+            'TRUE';
     comments = getProp(xml, 'Comments')?.value;
     fieldDelimiter = getProp(xml, 'FieldDelimiter')?.value;
     fileHeaderInfo = getProp(xml, 'FileHeaderInfo')?.value;
@@ -725,39 +726,46 @@ class CSVInput {
       builder.element('AllowQuotedRecordDelimiter',
           nest: allowQuotedRecordDelimiter ? 'TRUE' : 'FALSE');
       if (comments != null) builder.element('Comments', nest: comments);
-      if (fieldDelimiter != null) builder.element('FieldDelimiter', nest: fieldDelimiter);
-      if (fileHeaderInfo != null) builder.element('FileHeaderInfo', nest: fileHeaderInfo);
-      if (quoteCharacter != null) builder.element('QuoteCharacter', nest: quoteCharacter);
-      if (quoteEscapeCharacter != null) builder.element('QuoteEscapeCharacter', nest: quoteEscapeCharacter);
-      if (recordDelimiter != null) builder.element('RecordDelimiter', nest: recordDelimiter);
+      if (fieldDelimiter != null) {
+        builder.element('FieldDelimiter', nest: fieldDelimiter);
+      }
+      if (fileHeaderInfo != null) {
+        builder.element('FileHeaderInfo', nest: fileHeaderInfo);
+      }
+      if (quoteCharacter != null) {
+        builder.element('QuoteCharacter', nest: quoteCharacter);
+      }
+      if (quoteEscapeCharacter != null) {
+        builder.element('QuoteEscapeCharacter', nest: quoteEscapeCharacter);
+      }
+      if (recordDelimiter != null) {
+        builder.element('RecordDelimiter', nest: recordDelimiter);
+      }
     });
     return builder.buildDocument();
   }
 }
 
+/// Specifies that CSV field values may contain quoted record delimiters and such records should be allowed. Default value is FALSE. Setting this value to TRUE may lower performance.
+bool? allowQuotedRecordDelimiter;
 
+/// A single character used to indicate that a row should be ignored when the character is present at the start of that row. You can specify any character to indicate a comment line.
+String? comments;
 
-  /// Specifies that CSV field values may contain quoted record delimiters and such records should be allowed. Default value is FALSE. Setting this value to TRUE may lower performance.
-  bool? allowQuotedRecordDelimiter;
+/// A single character used to separate individual fields in a record. You can specify an arbitrary delimiter.
+String? fieldDelimiter;
 
-  /// A single character used to indicate that a row should be ignored when the character is present at the start of that row. You can specify any character to indicate a comment line.
-  String? comments;
+/// Describes the first line of input. Valid values are:
+String? fileHeaderInfo;
 
-  /// A single character used to separate individual fields in a record. You can specify an arbitrary delimiter.
-  String? fieldDelimiter;
+/// A single character used for escaping when the field delimiter is part of the value. For example, if the value is a, b, Amazon S3 wraps this field value in quotation marks, as follows: " a , b ".
+String? quoteCharacter;
 
-  /// Describes the first line of input. Valid values are:
-  String? fileHeaderInfo;
+/// A single character used for escaping the quotation mark character inside an already escaped value. For example, the value """ a , b """ is parsed as " a , b ".
+String? quoteEscapeCharacter;
 
-  /// A single character used for escaping when the field delimiter is part of the value. For example, if the value is a, b, Amazon S3 wraps this field value in quotation marks, as follows: " a , b ".
-  String? quoteCharacter;
-
-  /// A single character used for escaping the quotation mark character inside an already escaped value. For example, the value """ a , b """ is parsed as " a , b ".
-  String? quoteEscapeCharacter;
-
-  /// A single character used to separate individual records in the input. Instead of the default value, you can specify an arbitrary delimiter.
-  String? recordDelimiter;
-
+/// A single character used to separate individual records in the input. Instead of the default value, you can specify an arbitrary delimiter.
+String? recordDelimiter;
 
 /// Describes how uncompressed comma-separated values (CSV)-formatted results are formatted.
 class CSVOutput {
@@ -805,7 +813,6 @@ class CSVOutput {
   String? recordDelimiter;
 }
 
-
 /// The container element for specifying the default Object Lock retention settings for new objects placed in the specified bucket.
 class DefaultRetention {
   /// The number of days that you want to specify for the default retention period.
@@ -846,7 +853,6 @@ class DefaultRetention {
   }
 }
 
-
 /// Container for the objects to delete.
 class Delete {
   Delete(
@@ -877,7 +883,6 @@ class Delete {
   bool quiet;
 }
 
-
 /// Information about the deleted object.
 class DeletedObject {
   bool? deleteMarker;
@@ -902,7 +907,8 @@ class DeletedObject {
   XmlNode toXml() {
     final builder = XmlBuilder();
     builder.element('DeletedObject', nest: () {
-      builder.element('DeleteMarker', nest: deleteMarker != null && deleteMarker! ? 'TRUE' : 'FALSE');
+      builder.element('DeleteMarker',
+          nest: deleteMarker != null && deleteMarker! ? 'TRUE' : 'FALSE');
       if (deleteMarkerVersionId != null) {
         builder.element('DeleteMarkerVersionId', nest: deleteMarkerVersionId);
       }
@@ -916,8 +922,6 @@ class DeletedObject {
     return builder.buildDocument();
   }
 }
-
-
 
 /// Information about the delete marker.
 class DeleteMarkerEntry {
@@ -939,7 +943,9 @@ class DeleteMarkerEntry {
     isLatest = getProp(xml, 'IsLatest')?.value?.toUpperCase() == 'TRUE';
     key = getProp(xml, 'Key')?.value;
     lastModified = DateTime.tryParse(getProp(xml, 'LastModified')?.value ?? '');
-    owner = getProp(xml, 'Owner') != null ? Owner.fromXml(getProp(xml, 'Owner')!) : null;
+    owner = getProp(xml, 'Owner') != null
+        ? Owner.fromXml(getProp(xml, 'Owner')!)
+        : null;
     versionId = getProp(xml, 'VersionId')?.value;
   }
 
@@ -964,8 +970,6 @@ class DeleteMarkerEntry {
   }
 }
 
-
-/// Specifies whether Amazon S3 replicates the delete markers. If you specify a Filter, you must specify this element. However, in the latest version of replication configuration (when Filter is specified), Amazon S3 doesn't replicate delete markers. Therefore, the DeleteMarkerReplication element can contain only <Status>Disabled</Status>. For an example configuration, see Basic Rule Configuration.
 class DeleteMarkerReplication {
   DeleteMarkerReplication(
     this.status,
@@ -1421,7 +1425,6 @@ class InputSerialization {
   ParquetInput? parquet;
 }
 
-
 /// Specifies the inventory configuration for an Amazon S3 bucket.
 class InventoryConfiguration {
   InventoryConfiguration(
@@ -1435,13 +1438,13 @@ class InventoryConfiguration {
   );
 
   InventoryConfiguration.fromXml(XmlElement xml) {
-    destination = InventoryDestination.fromXml(getProp(xml, 'Destination')) ;
-    filter = InventoryFilter.fromXml(getProp(xml, 'Filter')) ;
+    destination = InventoryDestination.fromXml(getProp(xml, 'Destination'));
+    filter = InventoryFilter.fromXml(getProp(xml, 'Filter'));
     id = getProp(xml, 'Id')?.value;
     includedObjectVersions = getProp(xml, 'IncludedObjectVersions')?.value;
     isEnabled = getProp(xml, 'IsEnabled')?.value?.toUpperCase() == 'TRUE';
     optionalFields = getProp(xml, 'OptionalFields')?.value;
-    schedule = InventorySchedule.fromXml(getProp(xml, 'Schedule')) ;
+    schedule = InventorySchedule.fromXml(getProp(xml, 'Schedule'));
   }
 
   XmlNode toXml() {
@@ -1493,7 +1496,6 @@ class InventoryConfiguration {
   /// Specifies the schedule for generating inventory results.
   InventorySchedule? schedule;
 }
-
 
 /// Specifies the inventory configuration for an Amazon S3 bucket.
 class InventoryDestination {
@@ -1743,8 +1745,6 @@ class LifecycleConfiguration {
   Rule? rules;
 }
 
-
-
 /// Container for the expiration for the lifecycle of the object.
 class LifecycleExpiration {
   DateTime? date;
@@ -1761,7 +1761,8 @@ class LifecycleExpiration {
     if (xml != null) {
       final dateElement = getProp(xml, 'Date')?.value;
       final daysElement = getProp(xml, 'Days')?.value;
-      final expiredMarkerElement = getProp(xml, 'ExpiredObjectDeleteMarker')?.value;
+      final expiredMarkerElement =
+          getProp(xml, 'ExpiredObjectDeleteMarker')?.value;
 
       date = dateElement != null ? DateTime.tryParse(dateElement) : null;
       days = daysElement != null ? int.tryParse(daysElement) : null;
@@ -1790,9 +1791,6 @@ class LifecycleExpiration {
     return builder.buildDocument();
   }
 }
-
-
-
 
 /// A lifecycle rule for individual objects in an Amazon S3 bucket.
 class LifecycleRule {
@@ -2113,7 +2111,6 @@ class MetricsFilter {
   Tag? tag;
 }
 
-
 /// Container for the MultipartUpload for the Amazon S3 object.
 class MultipartUpload {
   MultipartUpload(
@@ -2127,13 +2124,16 @@ class MultipartUpload {
 
   MultipartUpload.fromXml(XmlElement xml) {
     // Safely parse and assign values with null checks
-  var initiatedValue = getProp(xml, 'Initiated')?.value;
-  initiated = (initiatedValue != null) ? DateTime.parse(initiatedValue) : null;
+    var initiatedValue = getProp(xml, 'Initiated')?.value;
+    initiated =
+        (initiatedValue != null) ? DateTime.parse(initiatedValue) : null;
     initiator = getProp(xml, 'Initiator') != null
         ? Initiator.fromXml(getProp(xml, 'Initiator')!)
         : null;
     key = getProp(xml, 'Key')?.value ?? '';
-    owner = getProp(xml, 'Owner') != null ? Owner.fromXml(getProp(xml, 'Owner')!) : null;
+    owner = getProp(xml, 'Owner') != null
+        ? Owner.fromXml(getProp(xml, 'Owner')!)
+        : null;
     storageClass = getProp(xml, 'StorageClass')?.value ?? '';
     uploadId = getProp(xml, 'UploadId')?.value ?? '';
   }
@@ -2182,7 +2182,6 @@ class MultipartUpload {
   String? uploadId;
 }
 
-
 /// Specifies when noncurrent object versions expire. Upon expiration, Amazon S3 permanently deletes the noncurrent object versions.
 class NoncurrentVersionExpiration {
   NoncurrentVersionExpiration(
@@ -2191,7 +2190,8 @@ class NoncurrentVersionExpiration {
 
   NoncurrentVersionExpiration.fromXml(XmlElement? xml) {
     var noncurrentDaysValue = getProp(xml, 'NoncurrentDays')?.value;
-    noncurrentDays = noncurrentDaysValue != null ? int.tryParse(noncurrentDaysValue) : null;
+    noncurrentDays =
+        noncurrentDaysValue != null ? int.tryParse(noncurrentDaysValue) : null;
   }
 
   XmlNode toXml() {
@@ -2206,7 +2206,6 @@ class NoncurrentVersionExpiration {
   int? noncurrentDays;
 }
 
-
 /// Container for the transition rule that describes when noncurrent objects transition to different storage classes.
 class NoncurrentVersionTransition {
   NoncurrentVersionTransition(
@@ -2216,7 +2215,8 @@ class NoncurrentVersionTransition {
 
   NoncurrentVersionTransition.fromXml(XmlElement? xml) {
     var noncurrentDaysValue = getProp(xml, 'NoncurrentDays')?.value;
-    noncurrentDays = noncurrentDaysValue != null ? int.tryParse(noncurrentDaysValue) : null;
+    noncurrentDays =
+        noncurrentDaysValue != null ? int.tryParse(noncurrentDaysValue) : null;
     storageClass = getProp(xml, 'StorageClass')?.value;
   }
 
@@ -2239,7 +2239,6 @@ class NoncurrentVersionTransition {
   /// The class of storage used to store the object.
   String? storageClass;
 }
-
 
 /// A container for specifying the notification configuration of the bucket. If this element is empty, notifications are turned off for the bucket.
 class NotificationConfiguration {
@@ -2361,16 +2360,18 @@ class Object {
   Object.fromXml(XmlElement xml) {
     eTag = getProp(xml, 'ETag')?.value;
     key = getProp(xml, 'Key')?.value;
-    
+
     var lastModifiedProp = getProp(xml, 'LastModified');
-    lastModified = lastModifiedProp != null ? DateTime.tryParse(lastModifiedProp.value ?? '') : null;
-    
+    lastModified = lastModifiedProp != null
+        ? DateTime.tryParse(lastModifiedProp.value ?? '')
+        : null;
+
     var ownerProp = getProp(xml, 'Owner');
     owner = ownerProp != null ? Owner.fromXml(ownerProp) : null;
-    
+
     var sizeProp = getProp(xml, 'Size');
     size = sizeProp != null ? int.tryParse(sizeProp.value ?? '') : null;
-    
+
     storageClass = getProp(xml, 'StorageClass')?.value;
   }
 
@@ -2422,8 +2423,6 @@ class Object {
     return 'Object{eTag: $eTag, key: $key, lastModified: $lastModified, owner: $owner, size: $size, storageClass: $storageClass}';
   }
 }
-
-
 
 /// Object Identifier is unique value to identify objects.
 class ObjectIdentifier {
@@ -2529,7 +2528,8 @@ class ObjectLockRetention {
         builder.element('Mode', nest: mode);
       }
       if (retainUntilDate != null) {
-        builder.element('RetainUntilDate', nest: retainUntilDate!.toIso8601String());
+        builder.element('RetainUntilDate',
+            nest: retainUntilDate!.toIso8601String());
       }
     });
     return builder.buildDocument();
@@ -2541,7 +2541,6 @@ class ObjectLockRetention {
   /// The date on which this Object Lock Retention will expire.
   DateTime? retainUntilDate;
 }
-
 
 /// The container element for an Object Lock rule.
 class ObjectLockRule {
@@ -2581,16 +2580,18 @@ class ObjectVersion {
 
   ObjectVersion.fromXml(XmlElement xml) {
     eTag = getProp(xml, 'ETag')?.value;
-    
+
     // Check for null before converting to uppercase
     final isLatestValue = getProp(xml, 'IsLatest')?.value;
-    isLatest = isLatestValue != null ? isLatestValue.toUpperCase() == 'TRUE' : false;
+    isLatest =
+        isLatestValue != null ? isLatestValue.toUpperCase() == 'TRUE' : false;
 
     key = getProp(xml, 'Key')?.value;
 
     // Ensure 'LastModified' is parsed correctly only if non-null
     final lastModifiedProp = getProp(xml, 'LastModified')?.value;
-    lastModified = lastModifiedProp != null ? DateTime.parse(lastModifiedProp) : null;
+    lastModified =
+        lastModifiedProp != null ? DateTime.parse(lastModifiedProp) : null;
 
     // Check for null before creating an 'Owner' instance
     final ownerProp = getProp(xml, 'Owner');
@@ -2649,8 +2650,6 @@ class ObjectVersion {
   /// Version ID of an object.
   String? versionId;
 }
-
-
 
 /// Describes the location where the restore job's output is stored.
 class OutputLocation {
@@ -2756,7 +2755,8 @@ class Part {
     eTag = getProp(xml, 'ETag')?.value;
 
     final lastModifiedProp = getProp(xml, 'LastModified')?.value;
-    lastModified = lastModifiedProp != null ? DateTime.tryParse(lastModifiedProp) : null;
+    lastModified =
+        lastModifiedProp != null ? DateTime.tryParse(lastModifiedProp) : null;
 
     final partNumberProp = getProp(xml, 'PartNumber')?.value;
     partNumber = partNumberProp != null ? int.tryParse(partNumberProp) : null;
@@ -2795,7 +2795,6 @@ class Part {
   int? size;
 }
 
-
 /// The container element for a bucket's policy status.
 class PolicyStatus {
   PolicyStatus(
@@ -2820,7 +2819,6 @@ class PolicyStatus {
   bool? isPublic;
 }
 
-
 /// This data type contains information about progress of an operation.
 class Progress {
   Progress(
@@ -2834,9 +2832,12 @@ class Progress {
     final bytesReturnedProp = getProp(xml, 'BytesReturned')?.value;
     final bytesScannedProp = getProp(xml, 'BytesScanned')?.value;
 
-    bytesProcessed = bytesProcessedProp != null ? int.tryParse(bytesProcessedProp) : null;
-    bytesReturned = bytesReturnedProp != null ? int.tryParse(bytesReturnedProp) : null;
-    bytesScanned = bytesScannedProp != null ? int.tryParse(bytesScannedProp) : null;
+    bytesProcessed =
+        bytesProcessedProp != null ? int.tryParse(bytesProcessedProp) : null;
+    bytesReturned =
+        bytesReturnedProp != null ? int.tryParse(bytesReturnedProp) : null;
+    bytesScanned =
+        bytesScannedProp != null ? int.tryParse(bytesScannedProp) : null;
   }
 
   XmlNode toXml() {
@@ -2864,7 +2865,6 @@ class Progress {
   /// The current number of object bytes scanned.
   int? bytesScanned;
 }
-
 
 /// This data type contains information about the progress event of an operation.
 class ProgressEvent {
@@ -2901,28 +2901,37 @@ class PublicAccessBlockConfiguration {
     final blockPublicAclsProp = getProp(xml, 'BlockPublicAcls')?.value;
     final blockPublicPolicyProp = getProp(xml, 'BlockPublicPolicy')?.value;
     final ignorePublicAclsProp = getProp(xml, 'IgnorePublicAcls')?.value;
-    final restrictPublicBucketsProp = getProp(xml, 'RestrictPublicBuckets')?.value;
+    final restrictPublicBucketsProp =
+        getProp(xml, 'RestrictPublicBuckets')?.value;
 
-    blockPublicAcls = blockPublicAclsProp != null && blockPublicAclsProp.toUpperCase() == 'TRUE';
-    blockPublicPolicy = blockPublicPolicyProp != null && blockPublicPolicyProp.toUpperCase() == 'TRUE';
-    ignorePublicAcls = ignorePublicAclsProp != null && ignorePublicAclsProp.toUpperCase() == 'TRUE';
-    restrictPublicBuckets = restrictPublicBucketsProp != null && restrictPublicBucketsProp.toUpperCase() == 'TRUE';
+    blockPublicAcls = blockPublicAclsProp != null &&
+        blockPublicAclsProp.toUpperCase() == 'TRUE';
+    blockPublicPolicy = blockPublicPolicyProp != null &&
+        blockPublicPolicyProp.toUpperCase() == 'TRUE';
+    ignorePublicAcls = ignorePublicAclsProp != null &&
+        ignorePublicAclsProp.toUpperCase() == 'TRUE';
+    restrictPublicBuckets = restrictPublicBucketsProp != null &&
+        restrictPublicBucketsProp.toUpperCase() == 'TRUE';
   }
 
   XmlNode toXml() {
     final builder = XmlBuilder();
     builder.element('PublicAccessBlockConfiguration', nest: () {
       if (blockPublicAcls != null) {
-        builder.element('BlockPublicAcls', nest: blockPublicAcls! ? 'TRUE' : 'FALSE');
+        builder.element('BlockPublicAcls',
+            nest: blockPublicAcls! ? 'TRUE' : 'FALSE');
       }
       if (blockPublicPolicy != null) {
-        builder.element('BlockPublicPolicy', nest: blockPublicPolicy! ? 'TRUE' : 'FALSE');
+        builder.element('BlockPublicPolicy',
+            nest: blockPublicPolicy! ? 'TRUE' : 'FALSE');
       }
       if (ignorePublicAcls != null) {
-        builder.element('IgnorePublicAcls', nest: ignorePublicAcls! ? 'TRUE' : 'FALSE');
+        builder.element('IgnorePublicAcls',
+            nest: ignorePublicAcls! ? 'TRUE' : 'FALSE');
       }
       if (restrictPublicBuckets != null) {
-        builder.element('RestrictPublicBuckets', nest: restrictPublicBuckets! ? 'TRUE' : 'FALSE');
+        builder.element('RestrictPublicBuckets',
+            nest: restrictPublicBuckets! ? 'TRUE' : 'FALSE');
       }
     });
     return builder.buildDocument();
@@ -2940,7 +2949,6 @@ class PublicAccessBlockConfiguration {
   /// Specifies whether Amazon S3 should restrict public bucket policies for this bucket. Setting this element to TRUE restricts access to this bucket to only AWS services and authorized users within this account if the bucket has a public policy.
   bool? restrictPublicBuckets;
 }
-
 
 /// Specifies the configuration for publishing messages to an Amazon Simple Queue Service (Amazon SQS) queue when Amazon S3 detects specified events.
 class QueueConfiguration {
@@ -3161,9 +3169,11 @@ class ReplicationRule {
   );
 
   ReplicationRule.fromXml(XmlElement? xml) {
-    deleteMarkerReplication = DeleteMarkerReplication.fromXml(getProp(xml, 'DeleteMarkerReplication'));
+    deleteMarkerReplication = DeleteMarkerReplication.fromXml(
+        getProp(xml, 'DeleteMarkerReplication'));
     destination = Destination.fromXml(getProp(xml, 'Destination'));
-    existingObjectReplication = ExistingObjectReplication.fromXml(getProp(xml, 'ExistingObjectReplication'));
+    existingObjectReplication = ExistingObjectReplication.fromXml(
+        getProp(xml, 'ExistingObjectReplication'));
     filter = ReplicationRuleFilter.fromXml(getProp(xml, 'Filter'));
     iD = getProp(xml, 'ID')?.value;
     prefix = getProp(xml, 'Prefix')?.value;
@@ -3172,7 +3182,8 @@ class ReplicationRule {
     final priorityValue = getProp(xml, 'Priority')?.value;
     priority = priorityValue != null ? int.tryParse(priorityValue) : null;
 
-    sourceSelectionCriteria = SourceSelectionCriteria.fromXml(getProp(xml, 'SourceSelectionCriteria'));
+    sourceSelectionCriteria = SourceSelectionCriteria.fromXml(
+        getProp(xml, 'SourceSelectionCriteria'));
     status = getProp(xml, 'Status')?.value;
   }
 
@@ -3180,13 +3191,15 @@ class ReplicationRule {
     final builder = XmlBuilder();
     builder.element('ReplicationRule', nest: () {
       if (deleteMarkerReplication != null) {
-        builder.element('DeleteMarkerReplication', nest: deleteMarkerReplication!.toXml());
+        builder.element('DeleteMarkerReplication',
+            nest: deleteMarkerReplication!.toXml());
       }
       if (destination != null) {
         builder.element('Destination', nest: destination!.toXml());
       }
       if (existingObjectReplication != null) {
-        builder.element('ExistingObjectReplication', nest: existingObjectReplication!.toXml());
+        builder.element('ExistingObjectReplication',
+            nest: existingObjectReplication!.toXml());
       }
       if (filter != null) {
         builder.element('Filter', nest: filter!.toXml());
@@ -3201,7 +3214,8 @@ class ReplicationRule {
         builder.element('Priority', nest: priority.toString());
       }
       if (sourceSelectionCriteria != null) {
-        builder.element('SourceSelectionCriteria', nest: sourceSelectionCriteria!.toXml());
+        builder.element('SourceSelectionCriteria',
+            nest: sourceSelectionCriteria!.toXml());
       }
       if (status != null) {
         builder.element('Status', nest: status);
@@ -3210,10 +3224,8 @@ class ReplicationRule {
     return builder.buildDocument();
   }
 
-  /// Specifies whether Amazon S3 replicates the delete markers. If you specify a Filter, you must specify this element. However, in the latest version of replication configuration (when Filter is specified), Amazon S3 doesn't replicate delete markers. Therefore, the DeleteMarkerReplication element can contain only <Status>Disabled</Status>. For an example configuration, see Basic Rule Configuration.
   DeleteMarkerReplication? deleteMarkerReplication;
 
-  /// A container for information about the replication destination and its configurations including enabling the S3 Replication Time Control (S3 RTC).
   Destination? destination;
 
   /// Type: ExistingObjectReplication data type
@@ -3237,7 +3249,6 @@ class ReplicationRule {
   /// Specifies whether the rule is enabled.
   String? status;
 }
-
 
 /// A container for specifying rule filters. The filters determine the subset of objects to which the rule applies. This element is required only if you specify more than one filter.
 class ReplicationRuleAndOperator {
@@ -3355,7 +3366,6 @@ class ReplicationTimeValue {
   int? minutes;
 }
 
-
 /// Container for Payer.
 class RequestPaymentConfiguration {
   RequestPaymentConfiguration(
@@ -3386,7 +3396,8 @@ class RequestProgress {
 
   RequestProgress.fromXml(XmlElement xml) {
     final enabledValue = getProp(xml, 'Enabled')?.value;
-    enabled = enabledValue != null ? enabledValue.toUpperCase() == 'TRUE' : false;
+    enabled =
+        enabledValue != null ? enabledValue.toUpperCase() == 'TRUE' : false;
   }
 
   XmlNode toXml() {
@@ -3400,7 +3411,6 @@ class RequestProgress {
   /// Specifies whether periodic QueryProgress frames should be sent. Valid values: TRUE, FALSE. Default value: FALSE.
   bool? enabled;
 }
-
 
 /// Container for restore job parameters.
 class RestoreRequest {
@@ -3421,13 +3431,19 @@ class RestoreRequest {
     description = getProp(xml, 'Description')?.value;
 
     final glacierJobParametersProp = getProp(xml, 'GlacierJobParameters');
-    glacierJobParameters = glacierJobParametersProp != null ? GlacierJobParameters.fromXml(glacierJobParametersProp) : null;
+    glacierJobParameters = glacierJobParametersProp != null
+        ? GlacierJobParameters.fromXml(glacierJobParametersProp)
+        : null;
 
     final outputLocationProp = getProp(xml, 'OutputLocation');
-    outputLocation = outputLocationProp != null ? OutputLocation.fromXml(outputLocationProp) : null;
+    outputLocation = outputLocationProp != null
+        ? OutputLocation.fromXml(outputLocationProp)
+        : null;
 
     final selectParametersProp = getProp(xml, 'SelectParameters');
-    selectParameters = selectParametersProp != null ? SelectParameters.fromXml(selectParametersProp) : null;
+    selectParameters = selectParametersProp != null
+        ? SelectParameters.fromXml(selectParametersProp)
+        : null;
 
     tier = getProp(xml, 'Tier')?.value;
     type = getProp(xml, 'Type')?.value;
@@ -3443,7 +3459,8 @@ class RestoreRequest {
         builder.element('Description', nest: description);
       }
       if (glacierJobParameters != null) {
-        builder.element('GlacierJobParameters', nest: glacierJobParameters!.toXml());
+        builder.element('GlacierJobParameters',
+            nest: glacierJobParameters!.toXml());
       }
       if (outputLocation != null) {
         builder.element('OutputLocation', nest: outputLocation!.toXml());
@@ -3482,7 +3499,6 @@ class RestoreRequest {
   /// Type of restore request.
   String? type;
 }
-
 
 /// Specifies the redirect behavior and when a redirect is applied.
 class RoutingRule {
@@ -3696,13 +3712,10 @@ class ScanRange {
     return builder.buildDocument();
   }
 
-  /// Specifies the end of the byte range. This parameter is optional. Valid values: non-negative integers. The default value is one less than the size of the object being queried. If only the End parameter is supplied, it is interpreted to mean scan the last N bytes of the file. For example, <scanrange><end>50</end></scanrange> means scan the last 50 bytes.
   int? end;
 
-  /// Specifies the start of the byte range. This parameter is optional. Valid values: non-negative integers. The default value is 0. If only start is supplied, it means scan from that point to the end of the file. For example; <scanrange><start>50</start></scanrange> means scan from byte 50 until the end of the file.
   int? start;
 }
-
 
 /// The container for selecting objects from a content event stream.
 class SelectObjectContentEventStream {
@@ -3958,13 +3971,16 @@ class Stats {
 
   Stats.fromXml(XmlElement? xml) {
     final bytesProcessedProp = getProp(xml, 'BytesProcessed')?.value;
-    bytesProcessed = bytesProcessedProp != null ? int.tryParse(bytesProcessedProp) : null;
+    bytesProcessed =
+        bytesProcessedProp != null ? int.tryParse(bytesProcessedProp) : null;
 
     final bytesReturnedProp = getProp(xml, 'BytesReturned')?.value;
-    bytesReturned = bytesReturnedProp != null ? int.tryParse(bytesReturnedProp) : null;
+    bytesReturned =
+        bytesReturnedProp != null ? int.tryParse(bytesReturnedProp) : null;
 
     final bytesScannedProp = getProp(xml, 'BytesScanned')?.value;
-    bytesScanned = bytesScannedProp != null ? int.tryParse(bytesScannedProp) : null;
+    bytesScanned =
+        bytesScannedProp != null ? int.tryParse(bytesScannedProp) : null;
   }
 
   XmlNode toXml() {
@@ -3992,7 +4008,6 @@ class Stats {
   /// The total number of object bytes scanned.
   int? bytesScanned;
 }
-
 
 /// Container for the Stats Event.
 class StatsEvent {
@@ -4271,7 +4286,6 @@ class Transition {
   /// The storage class to which you want the object to transition.
   String? storageClass;
 }
-
 
 /// Describes the versioning state of an Amazon S3 bucket. For more information, see PUT Bucket versioning in the Amazon Simple Storage Service API Reference.
 class VersioningConfiguration {

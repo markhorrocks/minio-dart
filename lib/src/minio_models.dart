@@ -54,12 +54,17 @@ class CompleteMultipartUpload {
 class ListMultipartUploadsOutput {
   ListMultipartUploadsOutput.fromXml(XmlElement xml) {
     final isTruncatedProp = getProp(xml, 'IsTruncated')?.value;
-    isTruncated = isTruncatedProp != null ? isTruncatedProp.toUpperCase() == 'TRUE' : null;
+    isTruncated = isTruncatedProp != null
+        ? isTruncatedProp.toUpperCase() == 'TRUE'
+        : null;
 
     nextKeyMarker = getProp(xml, 'NextKeyMarker')?.value;
     nextUploadIdMarker = getProp(xml, 'NextUploadIdMarker')?.value;
 
-    uploads = xml.findElements('Upload').map((e) => MultipartUpload.fromXml(e)).toList();
+    uploads = xml
+        .findElements('Upload')
+        .map((e) => MultipartUpload.fromXml(e))
+        .toList();
   }
 
   bool? isTruncated;
@@ -68,14 +73,18 @@ class ListMultipartUploadsOutput {
   late List<MultipartUpload> uploads;
 }
 
-
 class ListPartsOutput {
   ListPartsOutput.fromXml(XmlElement xml) {
     final isTruncatedProp = getProp(xml, 'IsTruncated')?.value;
-    isTruncated = isTruncatedProp != null ? isTruncatedProp.toUpperCase() == 'TRUE' : false;
+    isTruncated = isTruncatedProp != null
+        ? isTruncatedProp.toUpperCase() == 'TRUE'
+        : false;
 
-    final nextPartNumberMarkerProp = getProp(xml, 'NextPartNumberMarker')?.value;
-    nextPartNumberMarker = nextPartNumberMarkerProp != null ? int.tryParse(nextPartNumberMarkerProp) ?? 0 : 0;
+    final nextPartNumberMarkerProp =
+        getProp(xml, 'NextPartNumberMarker')?.value;
+    nextPartNumberMarker = nextPartNumberMarkerProp != null
+        ? int.tryParse(nextPartNumberMarkerProp) ?? 0
+        : 0;
 
     parts = xml.findElements('Part').map((e) => Part.fromXml(e)).toList();
   }
@@ -84,7 +93,6 @@ class ListPartsOutput {
   late int nextPartNumberMarker;
   late List<Part> parts;
 }
-
 
 class IncompleteUpload {
   IncompleteUpload({
@@ -163,7 +171,7 @@ class PostPolicy {
   }
 
   /// set bucket name
-  void setBucket(bucket) {
+  void setBucket(String bucket) {
     MinioInvalidBucketNameError.check(bucket);
     policy['conditions'].push(['eq', r'$bucket', bucket]);
     formData['bucket'] = bucket;

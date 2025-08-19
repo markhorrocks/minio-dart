@@ -48,7 +48,7 @@ bool isVirtualHostStyle(String endpoint, bool useSSL, String? bucket) {
   return true;
 }
 
-bool isValidEndpoint(endpoint) {
+bool isValidEndpoint(String endpoint) {
   return isValidDomain(endpoint) || isValidIPv4(endpoint);
 }
 
@@ -125,7 +125,7 @@ Map<String, String> prependXAMZMeta(Map<String, String?> metadata) {
   return newMetadata;
 }
 
-bool isAmzHeader(key) {
+bool isAmzHeader(String key) {
   key = key.toLowerCase();
   return key.startsWith('x-amz-meta-') ||
       key == 'x-amz-acl' ||
@@ -133,7 +133,7 @@ bool isAmzHeader(key) {
       key == 'x-amz-server-side-encryption';
 }
 
-bool isSupportedHeader(key) {
+bool isSupportedHeader(String key) {
   var supportedHeaders = {
     'content-type',
     'cache-control',
@@ -145,7 +145,7 @@ bool isSupportedHeader(key) {
   return (supportedHeaders.contains(key.toLowerCase()));
 }
 
-bool isStorageclassHeader(key) {
+bool isStorageclassHeader(String key) {
   return key.toLowerCase() == 'x-amz-storage-class';
 }
 
